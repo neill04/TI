@@ -1,0 +1,198 @@
+/* Estilos generales y de tipografía */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f7f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+h1, h2, h3 {
+    color: #1a2533;
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
+h1 {
+    text-align: center;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+/* Ocultar elementos */
+.hidden {
+    display: none;
+}
+
+/* Contenedor principal y menú */
+#app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #ffffff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+#menu {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+/* Estilos para los botones */
+button {
+    margin: 5px;
+    padding: 10px 20px;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: background-color 0.3s, transform 0.2s;
+    background-color: #007BFF;
+}
+
+button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.btn-principal {
+    background-color: #28a745;
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    margin-top: 20px;
+}
+.btn-principal:hover {
+    background-color: #218838;
+}
+
+button.btn-eliminar {
+    background-color: #dc3545;
+}
+button.btn-eliminar:hover {
+    background-color: #c82333;
+}
+
+
+/* Estilos para formularios */
+form {
+    margin-bottom: 25px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+    background-color: #fdfdff;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+form label {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    min-width: 180px;
+    flex-grow: 1;
+}
+
+input, select {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Estilos para las tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+table th, table td {
+    border: 1px solid #dee2e6;
+    padding: 12px;
+    text-align: left;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+table th {
+    background-color: #007BFF;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+}
+
+table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+table td:last-child {
+    text-align: center;
+}
+
+/* Estilos para el indicador de carga */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #007BFF;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+.loading-overlay p {
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ID de usuario */
+.user-id {
+    font-family: monospace;
+    background-color: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}

@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rentabilidad de Viajes (Almacenamiento Local)</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Cargar la biblioteca de gráficos Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Estilos para la ventana modal de detalles */
+    .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1000; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgba(0,0,0,0.5); 
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 900px;
+        border-radius: 8px;
+        position: relative;
+    }
+
+    .close-button {
+        color: #aaa;
+        position: absolute;
+        top: 10px;
+        right: 25px;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close-button:hover,
+    .close-button:focus {
+        color: black;
+    }
+    
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 40vh;
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    .parametros-grid, .form-viaje-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 20px;
+    }
+    
+    #formServicio {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+
+    #parametros-menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .reset-section {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .acciones-parametro button, .report-actions-cell button {
+        margin: 0 4px;
+    }
+
+    .report-actions button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .anulada {
+        text-decoration: line-through;
+        color: #999;
+    }
+
+
+    @media (max-width: 768px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Contenedor principal de la aplicación -->
+  <div id="app-container">
+    <h1 id="nombre-empresa">Empresa de Transportes</h1>
+    <p>Usuario: <span id="nombre-usuario"></span> | Los datos se guardan localmente en tu navegador.</p>
+
+    <div id="menu">
+      <button id="btn-registro">Registrar Viajes</button>
+      <button id="btn-reportes">Reportes</button>
+      <button id="btn-parametros">Parámetros</button>
+      <button id="btn-configuracion">Configuración</button>
+    </div>
+
+    <!-- Sección para registrar un nuevo viaje -->
+    <div id="registro" class="hidden">
+      <h2 id="registro-titulo">Registrar Viaje</h2>
+      <input type="hidden" id="editViajeId">
+      <fieldset id="fieldset-viaje">
+        <form id="formViaje" class="form-viaje-grid">
+            <label>Placa Tracto: <select id="placa1" required></select></label>
+            <label>Placa Carreta: <select id="placa2"></select></label>
+            <label>N° de Liquidación: <input type="number" id="nroLiquidacion" readonly></label>
+            <label>¿Liquidación Anulada?: <input type="checkbox" id="liquidacionAnulada"></label>
+            <label>Fecha de Inicio: <input type="date" id="fechaInicio" required></label>
+            <label>Fecha de Fin: <input type="date" id="fechaFin" required></label>
+            <label>Días de Viaje: <input type="text" id="diasViaje" readonly></label>
+            <label>Conductor: <select id="conductor" required></select></label>
+            <label>KM Inicio: <input type="number" id="kmInicio" required></label>
+            <label>KM Fin: <input type="number" id="kmFin" required></label>
+        </form>
+        <div id="registro-detalles">
+            <h3>Servicios del Viaje</h3>
+            <form id="formServicio">
+                <label>Cliente: <input type="text" id="cliente" list="clientes-list" required></label>
+                <datalist id="clientes-list"></datalist>
+                <label>Material Transportado: <input type="text" id="material" list="materiales-list"></label>
+                <datalist id="materiales-list"></datalist>
+                <label>Orden: <input type="text" id="orden"></label>
+                <label>Guía: <input type="text" id="guia"></label>
+                <label>Fecha Inicio Servicio: <input type="date" id="fechaServicioInicio"></label>
+                <label>Fecha Fin Servicio: <input type="date" id="fechaServicioFin"></label>
+                <button type="button" id="btn-agregar-servicio">Agregar Servicio</button>
+            </form>
+            <table id="tablaServicios"><thead><tr><th>Cliente</th><th>Material</th><th>Orden</th><th>Guía</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            <h3>Gastos</h3>
+            <form id="formGasto">
+                <label>Tipo de Gasto:<select id="tipoGasto"><option value="Alimentación">Alimentación</option><option value="Peajes">Peajes</option><option value="Combustible">Combustible</option><option value="Estacionamiento">Estacionamiento</option><option value="Repuestos">Repuestos</option><option value="Otros">Otros</option></select></label>
+                <label>Comprobante:<select id="comprobante"><option>Boleta</option><option>Factura</option><option>Sin</option></select></label>
+                <label>Descripción: <input type="text" id="descGasto" list="descripciones-gasto-list"></label>
+                <datalist id="descripciones-gasto-list"></datalist>
+                <label>Cantidad: <input type="number" id="cantGasto" value="1"></label>
+                <label>Precio Unitario: <input type="number" id="precioGasto"></label>
+                <button type="button" id="btn-agregar-gasto">Agregar Gasto</button>
+            </form>
+            <table id="tablaGastos"><thead><tr><th>Tipo</th><th>Comprobante</th><th>Descripción</th><th>Cant</th><th>P.U.</th><th>Total</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            <h3>Facturas por Servicio</h3>
+            <form id="formFactura">
+                <label>Serie-N°: <input type="text" id="factura"></label>
+                <label>Cantidad: <input type="number" id="facturaCantidad"></label>
+                <label>UM:<select id="facturaUM"><option>TM</option><option>Unidad</option><option>Servicio</option></select></label>
+                <label>Flete sin IGV: <input type="number" id="facturaFlete"></label>
+                <label>Días crédito: <input type="number" id="facturaDias"></label>
+                <button type="button" id="btn-agregar-factura">Agregar Factura</button>
+            </form>
+            <table id="tablaFacturas"><thead><tr><th>Factura</th><th>Cant</th><th>UM</th><th>Flete Total</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+        </div>
+      </fieldset>
+      <button id="btn-guardar-viaje" class="btn-principal">Guardar Viaje</button>
+    </div>
+    
+    <!-- Sección de Configuración -->
+    <div id="configuracion" class="hidden">
+        <h2>Configuración General</h2>
+        <form id="formConfiguracion">
+            <label>Nombre de la Empresa: <input type="text" id="configNombreEmpresa"></label>
+            <label>Nombre de Usuario: <input type="text" id="configNombreUsuario"></label>
+            <button type="button" id="btn-guardar-config">Guardar Configuración</button>
+        </form>
+        <div class="reset-section">
+            <h3>Zona de Peligro</h3>
+            <p>Esta acción borrará todos los datos guardados en la aplicación de forma permanente.</p>
+            <button id="btn-reiniciar-todo" class="btn-eliminar">Reiniciar Todos los Datos</button>
+        </div>
+    </div>
+
+    <!-- Sección de Parámetros -->
+    <div id="parametros" class="hidden">
+        <h2>Parámetros Generales</h2>
+        <div id="parametros-menu">
+            <button data-param="Unidades">Unidades</button>
+            <button data-param="Conductores">Conductores</button>
+            <button data-param="Clientes">Clientes</button>
+            <button data-param="Materiales">Materiales</button>
+            <button data-param="Descripciones">Descripciones de Gasto</button>
+        </div>
+        <div class="parametros-content">
+            <div id="param-Unidades" class="param-vista hidden">
+                <div class="parametros-grid">
+                    <div>
+                        <h3>Tractos (Placa Principal)</h3>
+                        <form id="formParametrosTracto"><input type="hidden" id="editTractoId"><label>Placa: <input type="text" id="paramPlacaTracto" placeholder="Ej: ABC-123" required></label><label>Depreciación por KM (S/): <input type="number" id="paramDepreciacion" step="0.01" value="0.03" required></label><label>N° Liquidación Inicial: <input type="number" id="paramLiquidacion" value="1" required></label><button type="button" id="btn-agregar-tracto">Agregar Tracto</button></form>
+                        <table id="tablaTractos"><thead><tr><th>Placa</th><th>Depreciación / KM</th><th>Próx. Liq.</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+                    </div>
+                    <div>
+                        <h3>Carretas (Placa Secundaria)</h3>
+                        <form id="formParametrosCarreta"><label>Placa: <input type="text" id="paramPlacaCarreta" placeholder="Ej: XYZ-456" required></label><button type="button" id="btn-agregar-carreta">Agregar Carreta</button></form>
+                        <table id="tablaCarretas"><thead><tr><th>Placa</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
+            </div>
+            <div id="param-Conductores" class="param-vista hidden">
+                <h3>Conductores</h3>
+                <form id="formParametrosConductor"><input type="hidden" id="editConductorId"><label>Nombre Completo: <input type="text" id="paramNombreConductor" required></label><label>N° de Licencia: <input type="text" id="paramLicenciaConductor" required></label><label>Sueldo Mensual (S/): <input type="number" id="paramSueldoConductor" step="0.01" required></label><button type="button" id="btn-agregar-conductor">Agregar Conductor</button></form>
+                <table id="tablaConductores"><thead><tr><th>Nombre</th><th>Licencia</th><th>Sueldo</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div id="param-Clientes" class="param-vista hidden">
+                <h3>Clientes</h3>
+                <form id="formParametrosCliente"><input type="hidden" id="editClienteId"><label>Nombre del Cliente: <input type="text" id="paramClienteNombre" required></label><button type="button" id="btn-agregar-cliente">Agregar Cliente</button></form>
+                <table id="tablaClientes"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div id="param-Materiales" class="param-vista hidden">
+                <h3>Materiales</h3>
+                <form id="formParametrosMaterial"><input type="hidden" id="editMaterialId"><label>Nombre del Material: <input type="text" id="paramMaterialNombre" required></label><button type="button" id="btn-agregar-material">Agregar Material</button></form>
+                <table id="tablaMateriales"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div id="param-Descripciones" class="param-vista hidden">
+                <h3>Descripciones de Gasto</h3>
+                <form id="formParametrosDescGasto"><input type="hidden" id="editDescGastoId"><label>Descripción: <input type="text" id="paramDescGastoNombre" required></label><button type="button" id="btn-agregar-descGasto">Agregar Descripción</button></form>
+                <table id="tablaDescripcionesGasto"><thead><tr><th>Descripción</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección para ver los reportes -->
+    <div id="reportes" class="hidden">
+      <h2>Reportes de Rentabilidad</h2>
+      <div class="report-actions">
+        <button id="btn-modificar-viaje-seleccionado" disabled>Modificar Viaje</button>
+        <button id="btn-eliminar-viajes-seleccionados" class="btn-eliminar" disabled>Eliminar Viajes</button>
+        <hr>
+        <label>Reporte por Mes: <input type="month" id="reporte-mes"></label>
+        <hr>
+        <button id="btn-importar-json">Importar Datos (JSON)</button>
+        <button id="btn-exportar-json">Exportar Datos (JSON)</button>
+        <button id="btn-descargar-csv">Descargar Reporte General (CSV)</button>
+        <input type="file" id="import-file-input" class="hidden" accept=".json,application/json">
+      </div>
+      <div id="vista-reporte-general">
+          <h3>Todos los Viajes</h3>
+          <table id="tablaReportes">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="seleccionar-todo"></th>
+                <th>N° Liq.</th>
+                <th>Estado</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Placa</th>
+                <th>Conductor</th>
+                <th>Utilidad</th>
+                <th>ROI (%)</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+      </div>
+      <div id="vista-reporte-mensual" class="hidden">
+          <h3 id="titulo-reporte-mensual"></h3>
+          <div class="chart-container" style="height: 50vh;">
+              <canvas id="reporteMensualChart"></canvas>
+          </div>
+          <table id="tablaReporteMensual">
+              <thead><tr><th>Placa</th><th>Viajes</th><th>Ingresos</th><th>Gastos</th><th>Utilidad</th><th>Rentabilidad (%)</th></tr></thead>
+              <tbody></tbody>
+              <tfoot></tfoot>
+          </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana Modal para los Detalles -->
+  <div id="detalleModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button">&times;</span>
+      <h2 id="detalleModalTitulo">Detalle del Viaje</h2>
+      <div id="detalleViajeInfo"></div>
+      <div id="detalleAnulada" class="hidden" style="text-align: center; padding: 20px; font-style: italic;">Este es un registro de liquidación anulada y no contiene detalles financieros.</div>
+      <div class="detail-grid">
+        <div>
+            <h3>Detalle de Ingresos (Facturas)</h3>
+            <table id="tablaDetalleIngresos"><thead><tr><th>Cliente</th><th>Material</th><th>Fecha Serv.</th><th>Factura</th><th>Monto</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+        </div>
+        <div>
+            <h3>Detalle de Gastos</h3>
+            <table id="tablaDetalleGastos"><thead><tr><th>Tipo</th><th>Descripción</th><th>Total</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+        </div>
+      </div>
+      <div id="chart-section" class="chart-container">
+        <h3>Gráfico de Ingresos vs. Gastos</h3>
+        <canvas id="rentabilidadChart"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Lógica de la aplicación -->
+  <script>
+    document.getElementById("btn-guardar-viaje").addEventListener("click", async () => {
+        // Recoge los datos de los formularios
+        const data = {
+            $id_tracto: parseInt(document.getElementById("placa1").value),
+            $id_carreta: parseInt(document.getElementById("placa2").value) || null,
+            $id_conductor: parseInt(document.getElementById("conductor").value),
+            $nro_liquidacion: parseInt(document.getElementById("nroLiquidacion").value),
+            $liquidacion_anulada: document.getElementById("liquidacionAnulada").checked, 
+            $fecha_inicio: document.getElementById("fechaInicio").value,
+            $fecha_fin: document.getElementById("fechaFin").value,
+            $km_inicio: parseInt(document.getElementById("kmInicio").value),
+            $km_fin: parseInt(document.getElementById("kmFin").value)
+        };
+
+        try {
+            const response = await fetch("enviar_datos.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recibe los datos de los formularios para que se muestren en ellos
+    window.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const res = await fetch("recibir_datos.php");
+            const data = await res.json();
+
+            mostrarDatos("placa1", data.tractos, "placa");
+            mostrarDatos("placa2", data.carretas, "placa");
+            mostrarDatos("conductor", data.conductores, "nombre");
+
+        } catch (error) {
+            console.error("Error cargando parámetros: ", error);
+            alert("No se pudieron cargar los datos de tractos, carretas o conductores");
+        }
+    });
+
+    // Implementación de la función mostrarDatos
+    function mostrarDatos(id, items, label) {
+        const select = document.getElementById(id);
+        select.innerHTML = "<option value=''>--Seleccionar--</option>";
+        if (!items) return;
+
+        items.forEach(item => {
+            const option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = item[label];
+            select.appendChild(option);
+        });
+    }
+
+    // Muestra dinámicamente el numero de liquidacion del tracto seleccionado
+    document.getElementById("placa1").addEventListener("change", async function () {
+        const tractoId = this.value;
+        if (!tractoId) return;
+
+        try {
+            const res = await fetch("GET/get_liquidacion.php?id=" + tractoId);
+            const data = await res.json();
+
+            if (data && data.nro_liquidacion) {
+                document.getElementById("nroLiquidacion").value = data.nro_liquidacion;
+            }
+        } catch (err) {
+            console.error("Error obteniendo el nro de liquidación del tracto:", err);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- ESTADO GLOBAL Y CONSTANTES ---
+        const TASA_IGV = 1.18;
+        let serviciosTemporales = [], gastosTemporales = [], facturasTemporales = [];
+        let viajes = [], tractos = [], carretas = [], conductores = [], clientes = [], materiales = [], descripcionesGasto = [], config = {};
+        let chartInstance = null, monthlyChartInstance = null; 
+
+        // --- GESTIÓN DEL STORAGE ---
+        function guardarDatosEnStorage() {
+            localStorage.setItem('rentabilidad_viajes_db', JSON.stringify(viajes));
+            localStorage.setItem('rentabilidad_tractos_db', JSON.stringify(tractos));
+            localStorage.setItem('rentabilidad_carretas_db', JSON.stringify(carretas));
+            localStorage.setItem('rentabilidad_conductores_db', JSON.stringify(conductores));
+            localStorage.setItem('rentabilidad_clientes_db', JSON.stringify(clientes));
+            localStorage.setItem('rentabilidad_materiales_db', JSON.stringify(materiales));
+            localStorage.setItem('rentabilidad_descripcionesGasto_db', JSON.stringify(descripcionesGasto));
+            localStorage.setItem('rentabilidad_config_db', JSON.stringify(config));
+        }
+
+        function cargarDatosDesdeStorage() {
+            viajes = JSON.parse(localStorage.getItem('rentabilidad_viajes_db') || '[]');
+            tractos = JSON.parse(localStorage.getItem('rentabilidad_tractos_db') || '[]');
+            carretas = JSON.parse(localStorage.getItem('rentabilidad_carretas_db') || '[]');
+            conductores = JSON.parse(localStorage.getItem('rentabilidad_conductores_db') || '[]');
+            clientes = JSON.parse(localStorage.getItem('rentabilidad_clientes_db') || '[]');
+            materiales = JSON.parse(localStorage.getItem('rentabilidad_materiales_db') || '[]');
+            descripcionesGasto = JSON.parse(localStorage.getItem('rentabilidad_descripcionesGasto_db') || '[]');
+            config = JSON.parse(localStorage.getItem('rentabilidad_config_db') || '{}');
+            aplicarConfiguracion();
+            actualizarTodasLasTablasYDropdowns();
+        }
+        
+        function actualizarTodasLasTablasYDropdowns(){
+            actualizarTablaTractos();
+            actualizarTablaCarretas();
+            actualizarTablaConductores();
+            actualizarTablaClientes();
+            actualizarTablaMateriales();
+            actualizarTablaDescripcionesGasto();
+            popularDropdowns();
+            actualizarTablaReportes();
+        }
+
+        // --- LÓGICA DE NAVEGACIÓN Y EVENTOS PRINCIPALES ---
+        function configurarEventListeners() {
+            document.getElementById('btn-registro').addEventListener('click', () => { limpiarFormularioViaje(); mostrarVista('registro'); });
+            document.getElementById('btn-reportes').addEventListener('click', () => mostrarVista('reportes'));
+            document.getElementById('btn-parametros').addEventListener('click', () => mostrarVista('parametros'));
+            document.getElementById('btn-configuracion').addEventListener('click', () => mostrarVista('configuracion'));
+            document.getElementById('parametros-menu').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') { mostrarVistaParametro(e.target.dataset.param); } });
+            document.getElementById('btn-agregar-servicio').addEventListener('click', agregarServicio);
+            document.getElementById('btn-agregar-gasto').addEventListener('click', agregarGasto);
+            document.getElementById('btn-agregar-factura').addEventListener('click', agregarFactura);
+            document.getElementById('btn-guardar-viaje').addEventListener('click', manejarGuardarViaje);
+            document.getElementById('btn-descargar-csv').addEventListener('click', descargarReporteCSV);
+            document.getElementById('btn-exportar-json').addEventListener('click', exportarDatosJSON);
+            document.getElementById('btn-importar-json').addEventListener('click', () => document.getElementById('import-file-input').click());
+            document.getElementById('import-file-input').addEventListener('change', importarDatosJSON);
+            document.querySelector('.close-button').addEventListener('click', () => document.getElementById('detalleModal').style.display = 'none');
+            document.getElementById('btn-agregar-tracto').addEventListener('click', manejarSubmitTracto);
+            document.getElementById('btn-agregar-carreta').addEventListener('click', manejarSubmitCarreta);
+            document.getElementById('btn-agregar-conductor').addEventListener('click', manejarSubmitConductor);
+            document.getElementById('btn-agregar-cliente').addEventListener('click', manejarSubmitCliente);
+            document.getElementById('btn-agregar-material').addEventListener('click', manejarSubmitMaterial);
+            document.getElementById('btn-agregar-descGasto').addEventListener('click', manejarSubmitDescGasto);
+            document.getElementById('btn-reiniciar-todo').addEventListener('click', reiniciarTodosLosDatos);
+            document.getElementById('btn-guardar-config').addEventListener('click', guardarConfiguracion);
+            document.getElementById('btn-modificar-viaje-seleccionado').addEventListener('click', manejarModificarSeleccionado);
+            document.getElementById('btn-eliminar-viajes-seleccionados').addEventListener('click', manejarEliminarSeleccionados);
+            document.getElementById('tablaReportes').querySelector('thead').addEventListener('change', manejarSeleccionGeneral);
+            document.getElementById('tablaReportes').querySelector('tbody').addEventListener('change', actualizarEstadoBotonesReporte);
+            document.getElementById('fechaInicio').addEventListener('change', calcularDiasViaje);
+            document.getElementById('fechaFin').addEventListener('change', calcularDiasViaje);
+            document.getElementById('placa1').addEventListener('change', actualizarNumeroLiquidacion);
+            document.getElementById('liquidacionAnulada').addEventListener('change', toggleFormularioViaje);
+            document.getElementById('reporte-mes').addEventListener('change', generarReporteMensual);
+        }
+
+        function mostrarVista(id) {
+            ['registro', 'reportes', 'parametros', 'configuracion'].forEach(vistaId => document.getElementById(vistaId).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            if (id === 'reportes') {
+                document.getElementById('reporte-mes').value = '';
+                document.getElementById('vista-reporte-general').classList.remove('hidden');
+                document.getElementById('vista-reporte-mensual').classList.add('hidden');
+                actualizarTablaReportes();
+            }
+            if (id === 'parametros') {
+                actualizarTodasLasTablasYDropdowns();
+                mostrarVistaParametro('Unidades');
+            }
+            if (id === 'registro') popularDropdowns();
+            if (id === 'configuracion') cargarConfigEnForm();
+        }
+
+        function mostrarVistaParametro(vista) {
+            document.querySelectorAll('.param-vista').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`param-${vista}`).classList.remove('hidden');
+        }
+        
+        function calcularDias(fechaInicio, fechaFin) {
+            if (!fechaInicio || !fechaFin) return 0;
+            const inicio = new Date(fechaInicio);
+            const fin = new Date(fechaFin);
+            if (fin < inicio) return 0;
+            const diffTime = Math.abs(fin - inicio);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        }
+        
+        function calcularDiasViaje() {
+            const dias = calcularDias(document.getElementById('fechaInicio').value, document.getElementById('fechaFin').value);
+            document.getElementById('diasViaje').value = dias > 0 ? dias : '';
+        }
+        
+        function toggleFormularioViaje() {
+            const anulada = document.getElementById('liquidacionAnulada').checked;
+            const fieldset = document.getElementById('fieldset-viaje');
+            const inputs = fieldset.querySelectorAll('input:not(#placa1):not(#nroLiquidacion):not(#liquidacionAnulada), select:not(#placa1)');
+            inputs.forEach(input => {
+                if (input.id !== 'btn-guardar-viaje' && input.id !== 'fechaInicio') {
+                    input.disabled = anulada;
+                }
+            });
+             document.getElementById('fechaFin').disabled = anulada;
+            document.getElementById('registro-detalles').style.display = anulada ? 'none' : 'block';
+        }
+
+        // --- GESTIÓN DE CONFIGURACIÓN ---
+        function guardarConfiguracion() {
+            config.nombreEmpresa = document.getElementById('configNombreEmpresa').value;
+            config.nombreUsuario = document.getElementById('configNombreUsuario').value;
+            guardarDatosEnStorage();
+            aplicarConfiguracion();
+            alert("Configuración guardada.");
+        }
+
+        function aplicarConfiguracion() {
+            document.getElementById('nombre-empresa').textContent = config.nombreEmpresa || 'Empresa de Transportes';
+            document.getElementById('nombre-usuario').textContent = config.nombreUsuario || 'Usuario';
+        }
+
+        function cargarConfigEnForm() {
+            document.getElementById('configNombreEmpresa').value = config.nombreEmpresa || '';
+            document.getElementById('configNombreUsuario').value = config.nombreUsuario || '';
+        }
+
+        // --- GESTIÓN DE PARÁMETROS (CRUD) ---
+
+        function manejarSubmitSimple(tipo, valor, array) {
+            const id = document.getElementById(`edit${tipo}Id`).value;
+            const nombre = valor.trim();
+            if(!nombre) { alert("El nombre no puede estar vacío."); return; }
+            if(id) {
+                if (array.some(i => i.nombre.toLowerCase() === nombre.toLowerCase() && i.nombre !== id)) { alert(`Este ${tipo.toLowerCase()} ya existe.`); return; }
+                const item = array.find(i => i.nombre === id);
+                if(item) item.nombre = nombre;
+            } else {
+                if(array.some(i => i.nombre.toLowerCase() === nombre.toLowerCase())) { return; } // No muestra alerta, solo no agrega
+                array.push({ nombre });
+            }
+            finalizarEdicionParametro(tipo);
+        }
+        function editarSimple(tipo, nombre, inputId) {
+            document.getElementById(`edit${tipo}Id`).value = nombre;
+            document.getElementById(inputId).value = nombre;
+            document.getElementById(`btn-agregar-${tipo}`).textContent = 'Guardar Cambios';
+        }
+        function manejarSubmitCliente() { manejarSubmitSimple('Cliente', document.getElementById('paramClienteNombre').value, clientes); }
+        function editarCliente(nombre) { editarSimple('Cliente', nombre, 'paramClienteNombre'); }
+        function manejarSubmitMaterial() { manejarSubmitSimple('Material', document.getElementById('paramMaterialNombre').value, materiales); }
+        function editarMaterial(nombre) { editarSimple('Material', nombre, 'paramMaterialNombre'); }
+        function manejarSubmitDescGasto() { manejarSubmitSimple('DescGasto', document.getElementById('paramDescGastoNombre').value, descripcionesGasto); }
+        function editarDescGasto(nombre) { editarSimple('DescGasto', nombre, 'paramDescGastoNombre'); }
+
+        function manejarSubmitTracto() {
+            const id = document.getElementById('editTractoId').value;
+            const numeroPlaca = document.getElementById('paramPlacaTracto').value.trim().toUpperCase();
+            const depreciacion = parseFloat(document.getElementById('paramDepreciacion').value);
+            const liquidacion = parseInt(document.getElementById('paramLiquidacion').value);
+            if (!numeroPlaca || isNaN(depreciacion) || depreciacion < 0 || isNaN(liquidacion)) { alert("Ingrese datos válidos."); return; }
+            if (id) {
+                const tracto = tractos.find(t => t.numero === id);
+                if (tracto) {
+                    tracto.depreciacion = depreciacion;
+                    tracto.liquidacion = liquidacion;
+                }
+            } else {
+                if (tractos.some(p => p.numero === numeroPlaca)) { alert("Este tracto ya existe."); return; }
+                tractos.push({ numero: numeroPlaca, depreciacion, liquidacion });
+            }
+            finalizarEdicionParametro('Tracto');
+        }
+        function editarTracto(numeroPlaca) {
+            const tracto = tractos.find(t => t.numero === numeroPlaca);
+            if (!tracto) return;
+            document.getElementById('editTractoId').value = tracto.numero;
+            document.getElementById('paramPlacaTracto').value = tracto.numero;
+            document.getElementById('paramPlacaTracto').readOnly = true;
+            document.getElementById('paramDepreciacion').value = tracto.depreciacion;
+            document.getElementById('paramLiquidacion').value = tracto.liquidacion;
+            document.getElementById('btn-agregar-tracto').textContent = 'Guardar Cambios';
+        }
+        function manejarSubmitCarreta() {
+            const numeroPlaca = document.getElementById('paramPlacaCarreta').value.trim().toUpperCase();
+            if (!numeroPlaca) { alert("Ingrese una placa válida."); return; }
+            if (carretas.some(c => c.numero === numeroPlaca)) { alert("Esta carreta ya existe."); return; }
+            carretas.push({ numero: numeroPlaca });
+            document.getElementById('formParametrosCarreta').reset();
+            guardarDatosEnStorage();
+            actualizarTodasLasTablasYDropdowns();
+        }
+        function manejarSubmitConductor() {
+            const id = document.getElementById('editConductorId').value;
+            const nombre = document.getElementById('paramNombreConductor').value.trim();
+            const licencia = document.getElementById('paramLicenciaConductor').value.trim();
+            const sueldo = parseFloat(document.getElementById('paramSueldoConductor').value);
+            if (!nombre || !licencia || isNaN(sueldo) || sueldo <= 0) { alert("Ingrese datos válidos."); return; }
+            if (id) {
+                if (conductores.some(c => c.licencia === licencia && c.licencia !== id)) { alert("Esta licencia ya pertenece a otro conductor."); return; }
+                const conductor = conductores.find(c => c.licencia === id);
+                if (conductor) {
+                    conductor.nombre = nombre;
+                    conductor.sueldo = sueldo;
+                }
+            } else {
+                if (conductores.some(c => c.licencia === licencia)) { alert("Esta licencia ya está registrada."); return; }
+                conductores.push({ nombre, licencia, sueldo });
+            }
+            finalizarEdicionParametro('Conductor');
+        }
+        function editarConductor(licencia) {
+            const conductor = conductores.find(c => c.licencia === licencia);
+            if(!conductor) return;
+            document.getElementById('editConductorId').value = conductor.licencia;
+            document.getElementById('paramNombreConductor').value = conductor.nombre;
+            document.getElementById('paramLicenciaConductor').value = conductor.licencia;
+            document.getElementById('paramLicenciaConductor').readOnly = true;
+            document.getElementById('paramSueldoConductor').value = conductor.sueldo;
+            document.getElementById('btn-agregar-conductor').textContent = 'Guardar Cambios';
+        }
+        
+        function finalizarEdicionParametro(tipo) {
+            guardarDatosEnStorage();
+            actualizarTodasLasTablasYDropdowns();
+            document.getElementById(`formParametros${tipo}`).reset();
+            document.getElementById(`edit${tipo}Id`).value = '';
+            if (tipo === 'Tracto') {
+                 document.getElementById('paramPlacaTracto').readOnly = false;
+                 document.getElementById('btn-agregar-tracto').textContent = 'Agregar Tracto';
+            } else if (tipo === 'Conductor') {
+                 document.getElementById('paramLicenciaConductor').readOnly = false;
+                 document.getElementById('btn-agregar-conductor').textContent = 'Agregar Conductor';
+            } else {
+                 document.getElementById(`btn-agregar-${tipo}`).textContent = `Agregar ${tipo}`;
+            }
+        }
+
+        function eliminarParametro(id, tipo) {
+            if (confirm(`¿Está seguro de que desea eliminar este ítem?`)) {
+                if(tipo === 'conductor') conductores = conductores.filter(c => c.licencia !== id);
+                else if (tipo === 'tracto') tractos = tractos.filter(t => t.numero !== id);
+                else if (tipo === 'carreta') carretas = carretas.filter(c => c.numero !== id);
+                else if (tipo === 'cliente') clientes = clientes.filter(c => c.nombre !== id);
+                else if (tipo === 'material') materiales = materiales.filter(m => m.nombre !== id);
+                else if (tipo === 'descgasto') descripcionesGasto = descripcionesGasto.filter(d => d.nombre !== id);
+                guardarDatosEnStorage();
+                actualizarTodasLasTablasYDropdowns();
+            }
+        }
+        
+        // --- ACTUALIZACIÓN DE TABLAS DE PARÁMETROS ---
+        function actualizarTablaTractos() {
+            const tbody = document.getElementById('tablaTractos').querySelector('tbody');
+            tbody.innerHTML = '';
+            tractos.forEach(tracto => {
+                const tr = tbody.insertRow();
+                tr.innerHTML = `<td>${tracto.numero}</td><td>S/ ${tracto.depreciacion.toFixed(2)}</td><td>${tracto.liquidacion}</td><td class="acciones-parametro"><button onclick="window.app.editarTracto('${tracto.numero}')">Modificar</button><button class="btn-eliminar" onclick="window.app.eliminarParametro('${tracto.numero}', 'tracto')">Eliminar</button></td>`;
+            });
+        }
+        function actualizarTablaCarretas() {
+            const tbody = document.getElementById('tablaCarretas').querySelector('tbody');
+            tbody.innerHTML = '';
+            carretas.forEach(carreta => {
+                const tr = tbody.insertRow();
+                tr.innerHTML = `<td>${carreta.numero}</td><td class="acciones-parametro"><button class="btn-eliminar" onclick="window.app.eliminarParametro('${carreta.numero}', 'carreta')">Eliminar</button></td>`;
+            });
+        }
+        function actualizarTablaConductores() {
+            const tbody = document.getElementById('tablaConductores').querySelector('tbody');
+            tbody.innerHTML = '';
+            conductores.forEach(conductor => {
+                const tr = tbody.insertRow();
+                tr.innerHTML = `<td>${conductor.nombre}</td><td>${conductor.licencia}</td><td>S/ ${conductor.sueldo.toFixed(2)}</td><td class="acciones-parametro"><button onclick="window.app.editarConductor('${conductor.licencia}')">Modificar</button><button class="btn-eliminar" onclick="window.app.eliminarParametro('${conductor.licencia}', 'conductor')">Eliminar</button></td>`;
+            });
+        }
+        function crearTablaSimple(tbodyId, data, tipo) {
+            const tbody = document.getElementById(tbodyId).querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                const tr = tbody.insertRow();
+                tr.innerHTML = `<td>${item.nombre}</td><td class="acciones-parametro"><button onclick="window.app.editar${tipo}('${item.nombre}')">Modificar</button><button class="btn-eliminar" onclick="window.app.eliminarParametro('${item.nombre}', '${tipo.toLowerCase()}')">Eliminar</button></td>`;
+            });
+        }
+        function actualizarTablaClientes() { crearTablaSimple('tablaClientes', clientes, 'Cliente'); }
+        function actualizarTablaMateriales() { crearTablaSimple('tablaMateriales', materiales, 'Material'); }
+        function actualizarTablaDescripcionesGasto() { crearTablaSimple('tablaDescripcionesGasto', descripcionesGasto, 'DescGasto'); }
+        
+        function popularDropdowns() {
+            ['placa1', 'placa2', 'conductor'].forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value; select.innerHTML = ''; let defaultOptionText = '', items = [];
+                if (id === 'placa1') { defaultOptionText = '-- Seleccione Tracto --'; items = tractos; }
+                else if (id === 'placa2') { defaultOptionText = '-- Ninguna --'; items = carretas; }
+                else { defaultOptionText = '-- Seleccione Conductor --'; items = conductores; }
+                select.add(new Option(defaultOptionText, ''));
+                items.forEach(item => select.add(new Option(item.numero || item.nombre, item.nombre || item.numero)));
+                select.value = currentValue;
+            });
+            const popularDatalist = (datalistId, items) => {
+                const datalist = document.getElementById(datalistId);
+                datalist.innerHTML = '';
+                items.forEach(item => datalist.insertAdjacentHTML('beforeend', `<option value="${item.nombre}"></option>`));
+            };
+            popularDatalist('clientes-list', clientes);
+            popularDatalist('materiales-list', materiales);
+            popularDatalist('descripciones-gasto-list', descripcionesGasto);
+        }
+        
+        function actualizarNumeroLiquidacion() {
+            const placaSeleccionada = document.getElementById('placa1').value;
+            const nroLiqInput = document.getElementById('nroLiquidacion');
+            const editId = document.getElementById('editViajeId').value;
+            if (editId && viajes.find(v => v.id == editId)?.placa1 === placaSeleccionada) {
+                nroLiqInput.value = viajes.find(v => v.id == editId).nroLiquidacion;
+            } else {
+                const tracto = tractos.find(t => t.numero === placaSeleccionada);
+                nroLiqInput.value = tracto ? tracto.liquidacion : '';
+            }
+        }
+
+        // --- LÓGICA DE VIAJES ---
+        function agregarServicio() {
+            const clienteNombre = document.getElementById('cliente').value.trim();
+            const materialNombre = document.getElementById('material').value.trim();
+            if(!clienteNombre) { alert("Por favor, ingrese el nombre del Cliente."); return; }
+            if(clienteNombre && !clientes.some(c => c.nombre.toLowerCase() === clienteNombre.toLowerCase())) { clientes.push({nombre: clienteNombre}); guardarDatosEnStorage(); popularDropdowns(); }
+            if(materialNombre && !materiales.some(m => m.nombre.toLowerCase() === materialNombre.toLowerCase())) { materiales.push({nombre: materialNombre}); guardarDatosEnStorage(); popularDropdowns(); }
+            const s = { cliente: clienteNombre, material: materialNombre, orden: document.getElementById('orden').value, guia: document.getElementById('guia').value, fechaInicio: document.getElementById('fechaServicioInicio').value, fechaFin: document.getElementById('fechaServicioFin').value };
+            s.dias = calcularDias(s.fechaInicio, s.fechaFin);
+            serviciosTemporales.push(s);
+            actualizarTabla('tablaServicios', serviciosTemporales, ['cliente', 'material', 'orden', 'guia', 'fechaInicio', 'fechaFin', 'dias']);
+            document.getElementById('formServicio').reset();
+        }
+        function agregarGasto() {
+            const descripcion = document.getElementById('descGasto').value.trim();
+            if(descripcion && !descripcionesGasto.some(d => d.nombre.toLowerCase() === descripcion.toLowerCase())) { descripcionesGasto.push({nombre: descripcion}); guardarDatosEnStorage(); popularDropdowns(); }
+            const g = { tipo: document.getElementById('tipoGasto').value, comprobante: document.getElementById('comprobante').value, descripcion, cantidad: +document.getElementById('cantGasto').value, precioUnit: +document.getElementById('precioGasto').value };
+            if(!g.tipo || g.cantidad <= 0 || g.precioUnit <= 0) { alert("Verifique los datos del gasto."); return; }
+            g.total = +((g.comprobante === 'Factura' ? g.precioUnit / TASA_IGV : g.precioUnit) * g.cantidad).toFixed(2);
+            gastosTemporales.push(g);
+            actualizarTabla('tablaGastos', gastosTemporales, ['tipo', 'comprobante', 'descripcion', 'cantidad', 'precioUnit', 'total']);
+            document.getElementById('formGasto').reset();
+        }
+        function agregarFactura() {
+            const f = { factura: document.getElementById('factura').value, cantidad: +document.getElementById('facturaCantidad').value, um: document.getElementById('facturaUM').value, fleteSinIGV: +document.getElementById('facturaFlete').value };
+            if(!f.factura || f.cantidad <= 0 || f.fleteSinIGV <= 0) { alert("Verifique los datos de la factura."); return; }
+            f.fleteTotal = +(f.fleteSinIGV * f.cantidad).toFixed(2);
+            facturasTemporales.push(f);
+            actualizarTabla('tablaFacturas', facturasTemporales, ['factura', 'cantidad', 'um', 'fleteTotal']);
+            document.getElementById('formFactura').reset();
+        }
+        function eliminarItemTemporal(index, array, tablaId) {
+            array.splice(index, 1);
+            const campos = { tablaServicios: ['cliente', 'material', 'orden', 'guia', 'fechaInicio', 'fechaFin', 'dias'], tablaGastos: ['tipo', 'comprobante', 'descripcion', 'cantidad', 'precioUnit', 'total'], tablaFacturas: ['factura', 'cantidad', 'um', 'fleteTotal'] };
+            actualizarTabla(tablaId, array, campos[tablaId], (i) => eliminarItemTemporal(i, array, tablaId));
+        }
+
+        function manejarGuardarViaje() {
+            const editId = document.getElementById('editViajeId').value;
+            const nroLiquidacion = +document.getElementById('nroLiquidacion').value;
+            const anulada = document.getElementById('liquidacionAnulada').checked;
+            const placa1 = document.getElementById('placa1').value;
+            
+            if (!placa1 || !nroLiquidacion) { alert("Por favor, seleccione una placa para obtener el número de liquidación."); return; }
+
+            let viajeData;
+            
+            if(anulada) {
+                viajeData = { nroLiquidacion, anulada, fechaInicio: '', fechaFin: '', diasViaje: 0, conductor: "N/A", placa1, placa2: '', kmInicio: 0, kmFin: 0, kmRecorridos: 0, ingreso: 0, gasto: 0, utilidad: 0, rentabilidad: 0, roi: 0, detalles: { servicios: [], gastos: [], facturas: [], depreciacion: 0, costoManoDeObra: 0 } };
+            } else {
+                const fechaInicio = document.getElementById('fechaInicio').value, fechaFin = document.getElementById('fechaFin').value, conductorNombre = document.getElementById('conductor').value, placa2 = document.getElementById('placa2').value, kmInicio = +document.getElementById('kmInicio').value, kmFin = +document.getElementById('kmFin').value;
+                const diasViaje = calcularDias(fechaInicio, fechaFin);
+                if (diasViaje <= 0 || !conductorNombre || !kmInicio || !kmFin) { alert("Complete los campos principales correctamente."); return; }
+                if (kmFin < kmInicio) { alert("El 'KM Fin' no puede ser menor que el 'KM Inicio'."); return; }
+                if (facturasTemporales.length === 0) { alert("Debe agregar al menos una factura para un viaje válido."); return; }
+                
+                const tractoSeleccionado = tractos.find(p => p.numero === placa1);
+                const conductorSeleccionado = conductores.find(c => c.nombre === conductorNombre);
+                if (!conductorSeleccionado || !tractoSeleccionado) { alert("El conductor o tracto seleccionado no es válido."); return; }
+
+                const costoManoDeObra = (conductorSeleccionado.sueldo / 30) * diasViaje;
+                const depreciacion = +((kmFin - kmInicio) * tractoSeleccionado.depreciacion).toFixed(2);
+                const ingresoTotal = facturasTemporales.reduce((acc, f) => acc + f.fleteTotal, 0);
+                const gastoOtros = gastosTemporales.reduce((acc, g) => acc + g.total, 0);
+                const gastoTotal = gastoOtros + depreciacion + costoManoDeObra;
+                const utilidad = ingresoTotal - gastoTotal;
+                const rentabilidad = ingresoTotal ? +(utilidad / ingresoTotal * 100).toFixed(2) : 0;
+                const roi = gastoTotal ? +(utilidad / gastoTotal * 100).toFixed(2) : 0;
+                
+                viajeData = { nroLiquidacion, anulada, fechaInicio, fechaFin, diasViaje, conductor: conductorNombre, placa1, placa2, kmInicio, kmFin, kmRecorridos: kmFin - kmInicio, ingreso: ingresoTotal, gasto: gastoTotal, utilidad, rentabilidad, roi, detalles: { servicios: serviciosTemporales, gastos: gastosTemporales, facturas: facturasTemporales, depreciacion, costoManoDeObra } };
+            }
+            
+            const tracto = tractos.find(t => t.numero === viajeData.placa1);
+
+            if(editId) {
+                const viajeIndex = viajes.findIndex(v => v.id == editId);
+                if(viajeIndex > -1) {
+                    const viajeOriginal = viajes[viajeIndex];
+                    if (viajeOriginal.anulada && !viajeData.anulada) { if(tracto) tracto.liquidacion++; }
+                    if (!viajeOriginal.anulada && viajeData.anulada) { if(tracto) tracto.liquidacion--; }
+                    viajes[viajeIndex] = { id: parseInt(editId), ...viajeData };
+                }
+            } else {
+                if(!anulada) { if(tracto) tracto.liquidacion++; }
+                viajes.push({ id: Date.now(), ...viajeData });
+            }
+
+            guardarDatosEnStorage();
+            limpiarFormularioViaje();
+            alert(`¡Viaje ${editId ? 'actualizado' : 'guardado'} exitosamente!`);
+            mostrarVista('reportes');
+        }
+
+        function limpiarFormularioViaje() {
+            serviciosTemporales = [], gastosTemporales = [], facturasTemporales = [];
+            document.getElementById('formViaje').reset();
+            document.getElementById('formServicio').reset();
+            document.getElementById('formGasto').reset();
+            document.getElementById('formFactura').reset();
+            ['tablaServicios', 'tablaGastos', 'tablaFacturas'].forEach(tablaId => document.getElementById(tablaId).querySelector('tbody').innerHTML = '');
+            document.getElementById('diasViaje').value = '';
+            document.getElementById('editViajeId').value = '';
+            document.getElementById('registro-titulo').textContent = 'Registrar Viaje';
+            document.getElementById('btn-guardar-viaje').textContent = 'Guardar Viaje';
+            toggleFormularioViaje(false);
+        }
+        
+        function editarViaje(viajeId) {
+            const viaje = viajes.find(v => v.id == viajeId);
+            if (!viaje) return;
+            limpiarFormularioViaje();
+            document.getElementById('editViajeId').value = viaje.id;
+            document.getElementById('placa1').value = viaje.placa1;
+            actualizarNumeroLiquidacion();
+            document.getElementById('liquidacionAnulada').checked = viaje.anulada;
+            document.getElementById('fechaInicio').value = viaje.fechaInicio;
+            document.getElementById('fechaFin').value = viaje.fechaFin;
+            document.getElementById('conductor').value = viaje.conductor;
+            document.getElementById('placa2').value = viaje.placa2;
+            document.getElementById('kmInicio').value = viaje.kmInicio;
+            document.getElementById('kmFin').value = viaje.kmFin;
+            serviciosTemporales = JSON.parse(JSON.stringify(viaje.detalles.servicios || []));
+            gastosTemporales = JSON.parse(JSON.stringify(viaje.detalles.gastos || []));
+            facturasTemporales = JSON.parse(JSON.stringify(viaje.detalles.facturas || []));
+            actualizarTabla('tablaServicios', serviciosTemporales, ['cliente', 'material', 'orden', 'guia', 'fechaInicio', 'fechaFin', 'dias']);
+            actualizarTabla('tablaGastos', gastosTemporales, ['tipo', 'comprobante', 'descripcion', 'cantidad', 'precioUnit', 'total']);
+            actualizarTabla('tablaFacturas', facturasTemporales, ['factura', 'cantidad', 'um', 'fleteTotal']);
+            calcularDiasViaje();
+            toggleFormularioViaje();
+            document.getElementById('registro-titulo').textContent = 'Modificar Viaje';
+            document.getElementById('btn-guardar-viaje').textContent = 'Guardar Cambios';
+            mostrarVista('registro');
+        }
+
+        function actualizarTabla(tablaId, array, campos) {
+            const tbody = document.getElementById(tablaId).querySelector('tbody');
+            tbody.innerHTML = '';
+            array.forEach((item, index) => {
+                const tr = tbody.insertRow();
+                campos.forEach(campo => {
+                    const td = tr.insertCell();
+                    td.textContent = typeof item[campo] === 'number' && !['cantidad', 'dias'].includes(campo) ? item[campo].toFixed(2) : (item[campo] || '');
+                });
+                const tdAcciones = tr.insertCell();
+                tdAcciones.innerHTML = `<button class="btn-eliminar" onclick="window.app.eliminarItemTemporal(${index}, '${tablaId}')">Eliminar</button>`;
+            });
+        }
+        
+        function getConductorInitials(fullName) {
+            if (!fullName || typeof fullName !== 'string') return 'N/A';
+            return fullName.split(' ').map(name => name[0]).join('').toUpperCase();
+        }
+
+        function actualizarTablaReportes() {
+            const tbody = document.getElementById('tablaReportes').querySelector('tbody');
+            tbody.innerHTML = '';
+            viajes.sort((a, b) => b.nroLiquidacion - a.nroLiquidacion).sort((a,b) => b.placa1.localeCompare(a.placa1));
+            viajes.forEach((viaje, index) => {
+                const tr = tbody.insertRow();
+                tr.className = viaje.anulada ? 'anulada' : '';
+                const roi = viaje.gasto > 0 ? (viaje.utilidad / viaje.gasto * 100).toFixed(2) : 0;
+                tr.innerHTML = `<td><input type="checkbox" class="viaje-checkbox" value="${viaje.id}"></td>
+                              <td>${viaje.nroLiquidacion}</td>
+                              <td>${viaje.anulada ? 'Anulada' : 'Válida'}</td>
+                              <td>${viaje.fechaInicio}</td>
+                              <td>${viaje.fechaFin}</td>
+                              <td>${viaje.placa1}</td>
+                              <td>${viaje.conductor}</td>
+                              <td>S/ ${viaje.utilidad.toFixed(2)}</td>
+                              <td>${roi} %</td>`;
+                const tdAcciones = tr.insertCell();
+                tdAcciones.className = 'report-actions-cell';
+                tdAcciones.innerHTML = `<button onclick="window.app.mostrarDetalles(${viaje.id})">Detalle</button>`;
+            });
+            actualizarEstadoBotonesReporte();
+        }
+
+        function manejarSeleccionGeneral(e) {
+            if (e.target.id === 'seleccionar-todo') {
+                document.querySelectorAll('.viaje-checkbox').forEach(cb => cb.checked = e.target.checked);
+                actualizarEstadoBotonesReporte();
+            }
+        }
+        function getViajesSeleccionados() {
+            return Array.from(document.querySelectorAll('.viaje-checkbox:checked')).map(cb => cb.value);
+        }
+        function actualizarEstadoBotonesReporte() {
+            const seleccionados = getViajesSeleccionados();
+            document.getElementById('btn-modificar-viaje-seleccionado').disabled = seleccionados.length !== 1;
+            document.getElementById('btn-eliminar-viajes-seleccionados').disabled = seleccionados.length === 0;
+            const totalCheckboxes = document.querySelectorAll('.viaje-checkbox').length;
+            document.getElementById('seleccionar-todo').checked = seleccionados.length === totalCheckboxes && totalCheckboxes > 0;
+        }
+        function manejarModificarSeleccionado() {
+            const seleccionados = getViajesSeleccionados();
+            if (seleccionados.length === 1) {
+                editarViaje(parseInt(seleccionados[0]));
+            }
+        }
+        function manejarEliminarSeleccionados() {
+            const seleccionados = getViajesSeleccionados().map(id => parseInt(id));
+            if(seleccionados.length > 0 && confirm(`¿Estás seguro de que quieres eliminar ${seleccionados.length} viaje(s) seleccionados?`)) {
+                viajes = viajes.filter(v => !seleccionados.includes(v.id));
+                guardarDatosEnStorage();
+                actualizarTablaReportes();
+            }
+        }
+        
+        function mostrarDetalles(viajeId) {
+            const viaje = viajes.find(v => v.id == viajeId);
+            if (!viaje) return;
+            const modalTitle = document.getElementById('detalleModalTitulo');
+            const viajeInfo = document.getElementById('detalleViajeInfo');
+            const detalleGrid = document.querySelector('.detail-grid');
+            const chartSection = document.getElementById('chart-section');
+            const anuladaMsg = document.getElementById('detalleAnulada');
+
+            modalTitle.textContent = `Detalle de Viaje - Liquidación N° ${viaje.nroLiquidacion}`;
+            viajeInfo.innerHTML = `<p><strong>Fechas:</strong> ${viaje.fechaInicio} al ${viaje.fechaFin} | <strong>Conductor:</strong> ${viaje.conductor}</p><p><strong>Tracto:</strong> ${viaje.placa1} | <strong>Carreta:</strong> ${viaje.placa2 || 'N/A'} | <strong>KM Recorridos:</strong> ${viaje.kmRecorridos}</p>`;
+            
+            if (viaje.anulada) {
+                detalleGrid.classList.add('hidden');
+                chartSection.classList.add('hidden');
+                anuladaMsg.classList.remove('hidden');
+            } else {
+                detalleGrid.classList.remove('hidden');
+                chartSection.classList.remove('hidden');
+                anuladaMsg.classList.add('hidden');
+                
+                const tablaIngresosBody = document.getElementById('tablaDetalleIngresos').querySelector('tbody');
+                const tablaIngresosFoot = document.getElementById('tablaDetalleIngresos').querySelector('tfoot');
+                tablaIngresosBody.innerHTML = '';
+                let totalIngresos = 0;
+                viaje.detalles.facturas.forEach(factura => {
+                    const servicioAsociado = viaje.detalles.servicios.find(s => s.orden && s.orden === factura.orden) || viaje.detalles.servicios[0];
+                    tablaIngresosBody.innerHTML += `<tr><td>${servicioAsociado?.cliente || ''}</td><td>${servicioAsociado?.material || ''}</td><td>${servicioAsociado?.fechaInicio || ''}</td><td>${factura.factura}</td><td>S/ ${factura.fleteTotal.toFixed(2)}</td></tr>`;
+                    totalIngresos += factura.fleteTotal;
+                });
+                tablaIngresosFoot.innerHTML = `<tr><td colspan="4" style="text-align:right; font-weight:bold;">Total Ingresos:</td><td style="font-weight:bold;">S/ ${totalIngresos.toFixed(2)}</td></tr>`;
+
+                const tablaGastosBody = document.getElementById('tablaDetalleGastos').querySelector('tbody');
+                const tablaGastosFoot = document.getElementById('tablaDetalleGastos').querySelector('tfoot');
+                let gastosHTML = viaje.detalles.gastos.map(g => `<tr><td>${g.tipo}</td><td>${g.descripcion}</td><td>S/ ${g.total.toFixed(2)}</td></tr>`).join('');
+                gastosHTML += `<tr><td>Costo Mano de Obra</td><td>Sueldo del conductor</td><td>S/ ${viaje.detalles.costoManoDeObra.toFixed(2)}</td></tr>`;
+                gastosHTML += `<tr><td>Depreciación</td><td>Uso del vehículo</td><td>S/ ${viaje.detalles.depreciacion.toFixed(2)}</td></tr>`;
+                tablaGastosBody.innerHTML = gastosHTML;
+                const totalGastos = viaje.detalles.gastos.reduce((acc, g) => acc + g.total, 0) + viaje.detalles.costoManoDeObra + viaje.detalles.depreciacion;
+                tablaGastosFoot.innerHTML = `<tr><td colspan="2" style="text-align:right; font-weight:bold;">Total Gastos:</td><td style="font-weight:bold;">S/ ${totalGastos.toFixed(2)}</td></tr>`;
+                
+                const ctx = document.getElementById('rentabilidadChart').getContext('2d');
+                if(chartInstance) chartInstance.destroy();
+                chartInstance = new Chart(ctx, { type: 'bar', data: { labels: ['Ingresos', 'Gastos'], datasets: [{ label: 'Monto en S/', data: [viaje.ingreso, viaje.gasto], backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 99, 132, 0.6)'], borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'], borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false } });
+            }
+            
+            document.getElementById('detalleModal').style.display = 'block';
+        }
+        
+        function generarReporteMensual() {
+            const mesSeleccionado = document.getElementById('reporte-mes').value;
+            if (!mesSeleccionado) {
+                document.getElementById('vista-reporte-general').classList.remove('hidden');
+                document.getElementById('vista-reporte-mensual').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('vista-reporte-general').classList.add('hidden');
+            document.getElementById('vista-reporte-mensual').classList.remove('hidden');
+
+            const [year, month] = mesSeleccionado.split('-');
+            document.getElementById('titulo-reporte-mensual').textContent = `Reporte de ${new Date(year, month - 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' })}`;
+
+            const viajesDelMes = viajes.filter(v => v.fechaInicio.startsWith(mesSeleccionado) && !v.anulada);
+            const datosPorPlaca = {};
+
+            viajesDelMes.forEach(viaje => {
+                if (!datosPorPlaca[viaje.placa1]) {
+                    datosPorPlaca[viaje.placa1] = { viajes: 0, ingresos: 0, gastos: 0, utilidad: 0 };
+                }
+                datosPorPlaca[viaje.placa1].viajes++;
+                datosPorPlaca[viaje.placa1].ingresos += viaje.ingreso;
+                datosPorPlaca[viaje.placa1].gastos += viaje.gasto;
+                datosPorPlaca[viaje.placa1].utilidad += viaje.utilidad;
+            });
+
+            const tbody = document.getElementById('tablaReporteMensual').querySelector('tbody');
+            const tfoot = document.getElementById('tablaReporteMensual').querySelector('tfoot');
+            tbody.innerHTML = '';
+            let totalMes = { viajes: 0, ingresos: 0, gastos: 0, utilidad: 0 };
+
+            Object.keys(datosPorPlaca).sort().forEach(placa => {
+                const data = datosPorPlaca[placa];
+                const rentabilidad = data.ingresos > 0 ? (data.utilidad / data.ingresos * 100).toFixed(2) : 0;
+                tbody.innerHTML += `<tr><td>${placa}</td><td>${data.viajes}</td><td>S/ ${data.ingresos.toFixed(2)}</td><td>S/ ${data.gastos.toFixed(2)}</td><td>S/ ${data.utilidad.toFixed(2)}</td><td>${rentabilidad} %</td></tr>`;
+                totalMes.viajes += data.viajes;
+                totalMes.ingresos += data.ingresos;
+                totalMes.gastos += data.gastos;
+                totalMes.utilidad += data.utilidad;
+            });
+            const rentabilidadTotal = totalMes.ingresos > 0 ? (totalMes.utilidad / totalMes.ingresos * 100).toFixed(2) : 0;
+            tfoot.innerHTML = `<tr><th>Total</th><th>${totalMes.viajes}</th><th>S/ ${totalMes.ingresos.toFixed(2)}</th><th>S/ ${totalMes.gastos.toFixed(2)}</th><th>S/ ${totalMes.utilidad.toFixed(2)}</th><th>${rentabilidadTotal} %</th></tr>`;
+            
+            const ctx = document.getElementById('reporteMensualChart').getContext('2d');
+            if(monthlyChartInstance) monthlyChartInstance.destroy();
+            monthlyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(datosPorPlaca).sort(),
+                    datasets: [{
+                        label: 'Utilidad por Placa (S/)',
+                        data: Object.values(datosPorPlaca).map(d => d.utilidad.toFixed(2)),
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } }, responsive: true }
+            });
+
+        }
+
+        function exportarDatosJSON() {
+            const dataToExport = { tractos, carretas, conductores, clientes, materiales, descripcionesGasto, viajes, config };
+            const jsonContent = JSON.stringify(dataToExport, null, 2);
+            descargarArchivo(jsonContent, 'backup_completo_rentabilidad.json', 'application/json;charset=utf-8;');
+        }
+        function descargarArchivo(contenido, nombreArchivo, tipoMime) {
+            const blob = new Blob([contenido], { type: tipoMime });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", nombreArchivo);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        function importarDatosJSON(evento) {
+            const archivo = evento.target.files[0];
+            if (!archivo) { return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const datosImportados = JSON.parse(e.target.result);
+                    if (datosImportados && Array.isArray(datosImportados.viajes)) {
+                         if (confirm("¿Seguro que quieres reemplazar TODOS los datos?")) {
+                            tractos = datosImportados.tractos || [];
+                            carretas = datosImportados.carretas || [];
+                            conductores = datosImportados.conductores || [];
+                            clientes = datosImportados.clientes || [];
+                            materiales = datosImportados.materiales || [];
+                            descripcionesGasto = datosImportados.descripcionesGasto || [];
+                            viajes = datosImportados.viajes;
+                            config = datosImportados.config || {};
+                            guardarDatosEnStorage();
+                            aplicarConfiguracion();
+                            actualizarTodasLasTablasYDropdowns();
+                            alert("¡Datos importados correctamente!");
+                        }
+                    } else { throw new Error("El archivo no contiene el formato esperado."); }
+                } catch (error) { alert("Error al importar el archivo.\n\nDetalle: " + error.message); }
+            };
+            reader.readAsText(archivo);
+            evento.target.value = '';
+        }
+        function descargarReporteCSV() {
+            if (viajes.length === 0) { alert("No hay datos para descargar."); return; }
+            const headers = ['#', 'N° Liq.', 'Estado', 'Fecha Inicio', 'Fecha Fin', 'Placa Tracto', 'Conductor', 'Utilidad (S/)', 'ROI (%)'];
+            let csvContent = headers.join(',') + '\n';
+            viajes.forEach((viaje, index) => {
+                const roi = viaje.gasto > 0 ? (viaje.utilidad / viaje.gasto * 100).toFixed(2) : 0;
+                const row = [ index + 1, viaje.nroLiquidacion, viaje.anulada ? 'Anulada' : 'Válida', viaje.fechaInicio, viaje.fechaFin, viaje.placa1, getConductorInitials(viaje.conductor), viaje.utilidad.toFixed(2), roi ];
+                csvContent += `"${row.join('","')}"\n`;
+            });
+            descargarArchivo(csvContent, 'reporte_rentabilidad.csv', 'text/csv;charset=utf-8;');
+        }
+        
+        function reiniciarTodosLosDatos() {
+            const pass = prompt("Para reiniciar todos los datos, por favor ingrese la contraseña:");
+            if(pass === "Pocoyo.12") {
+                if (confirm("¿ESTÁS COMPLETAMENTE SEGURO? Esta acción es irreversible.")) {
+                    localStorage.clear();
+                    viajes = [], tractos = [], carretas = [], conductores = [], clientes = [], materiales = [], descripcionesGasto = [], config = {};
+                    actualizarTodasLasTablasYDropdowns();
+                    aplicarConfiguracion();
+                    alert("Todos los datos han sido reiniciados.");
+                }
+            } else if (pass !== null) {
+                alert("Contraseña incorrecta.");
+            }
+        }
+        
+        // --- PUNTO DE ENTRADA ---
+        function start() {
+            window.app = {
+                editarTracto, editarConductor, editarCliente, editarMaterial, editarDescGasto,
+                eliminarParametro, mostrarDetalles, editarViaje,
+                eliminarItemTemporal: (index, tablaId) => {
+                    if(tablaId === 'tablaServicios') eliminarItemTemporal(index, serviciosTemporales, tablaId);
+                    else if (tablaId === 'tablaGastos') eliminarItemTemporal(index, gastosTemporales, tablaId);
+                    else if (tablaId === 'tablaFacturas') eliminarItemTemporal(index, facturasTemporales, tablaId);
+                }
+            };
+            configurarEventListeners();
+            cargarDatosDesdeStorage();
+            mostrarVista('registro');
+        }
+
+        start();
+
+    });
+  </script>
+
+</body>
+</html>
