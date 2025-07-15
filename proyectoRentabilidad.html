@@ -318,22 +318,128 @@
   
   <!-- Lógica de la aplicación -->
   <script>
+    // Recoge los datos para guardar el viaje
+    let viajeActualID = null;
+    let servicioActualID = null;
+
     document.getElementById("btn-guardar-viaje").addEventListener("click", async () => {
-        // Recoge los datos de los formularios
         const data = {
-            $id_tracto: parseInt(document.getElementById("placa1").value),
-            $id_carreta: parseInt(document.getElementById("placa2").value) || null,
-            $id_conductor: parseInt(document.getElementById("conductor").value),
-            $nro_liquidacion: parseInt(document.getElementById("nroLiquidacion").value),
-            $liquidacion_anulada: document.getElementById("liquidacionAnulada").checked, 
-            $fecha_inicio: document.getElementById("fechaInicio").value,
-            $fecha_fin: document.getElementById("fechaFin").value,
-            $km_inicio: parseInt(document.getElementById("kmInicio").value),
-            $km_fin: parseInt(document.getElementById("kmFin").value)
+            id_tracto: parseInt(document.getElementById("placa1").value),
+            id_carreta: parseInt(document.getElementById("placa2").value) || null,
+            id_conductor: parseInt(document.getElementById("conductor").value),
+            nro_liquidacion: parseInt(document.getElementById("nroLiquidacion").value),
+            liquidacion_anulada: document.getElementById("liquidacionAnulada").checked, 
+            fecha_inicio: document.getElementById("fechaInicio").value,
+            fecha_fin: document.getElementById("fechaFin").value,
+            km_inicio: parseInt(document.getElementById("kmInicio").value),
+            km_fin: parseInt(document.getElementById("kmFin").value)
         };
 
         try {
-            const response = await fetch("enviar_datos.php", {
+            const response = await fetch("api/agregar_viaje.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            if (resultado.id_viaje) {
+                viajeActualID = resultado.id_viaje; 
+                alert("Viaje guardado correctamente.");
+            } else {
+                alert(resultado.error || "Error al guardar el viaje.");
+            }
+        } catch (err) {
+            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            console.error();
+        }
+    });
+
+    document.getElementById("btn-agregar-servicio").addEventListener("click", async () => {
+        const data = {
+            cliente: document.getElementById("cliente").value.trim(),
+            material: document.getElementById("material").value.trim(),
+            orden: document.getElementById("orden").value.trim(),
+            guia: document.getElementById("guia").value.trim(),
+            fecha_inicio_servicio: document.getElementById("fechaServicioInicio").value,
+            fecha_fin_servicio: document.getElementById("fechaServicioFin").value
+        };
+
+        try {
+            const response = await fetch("api/agregar_servicio.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+
+            if (resultado.id_servicio) {
+                servicioActualID = resultado.id_servicio;
+            }
+
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    document.getElementById("btn-agregar-gasto").addEventListener("click", async () => {
+        const data = {
+            tipo: document.getElementById("tipoGasto").value,
+            comprobante: document.getElementById("comprobante").value,
+            descripcion: document.getElementById("descGasto").value.trim(),
+            cantidad: parseFloat(document.getElementById("cantGasto").value),
+            precio_unitario: parseFloat(document.getElementById("precioGasto").value),
+            total: parseFloat(document.getElementById("cantGasto").value) * parseFloat(document.getElementById("precioGasto").value)
+        };
+
+        try {
+            const response = await fetch("api/agregar_gasto.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+        } catch (err) {
+            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+
+    document.getElementById("btn-agregar-factura").addEventListener("click", async () => {
+        const data = {
+            serie: document.getElementById("factura").value.trim(),
+            cantidad: parseFloat(document.getElementById("facturaCantidad").value),
+            unidad_medida: document.getElementById("facturaUM").value,
+            flete_sin_igv: parseFloat(document.getElementById("facturaFlete").value),
+            dias_credito: parseInt(document.getElementById("facturaDias").value)
+        };
+
+        try {
+            const response = await fetch("api/agregar_factura.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+        } catch (err) {
+            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro tracto
+    document.getElementById("btn-agregar-tracto").addEventListener("click", async () => {
+        const data = {
+            placa: document.getElementById("paramPlacaTracto").value,
+            depreciacion_km: parseFloat(document.getElementById("paramDepreciacion").value),
+            nro_liquidacion_inicial: parseInt(document.getElementById("paramLiquidacion").value)
+        };
+
+        try {
+            const response = await fetch("api/agregar_tracto.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -342,7 +448,114 @@
             const resultado = await response.json();
             alert(resultado.mensaje || resultado.error);
         } catch (err) {
-            alert("Hubo un error al hacer la conexión con el servidor PHP");
+            alert("Error al conectar con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro carreta
+    document.getElementById("btn-agregar-carreta").addEventListener("click", async () => {
+        const data = {
+            placa: document.getElementById("paramPlacaCarreta").value
+        };
+
+        try {
+            const response = await fetch("api/agregar_carreta.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Error al conectar con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro conductor
+    document.getElementById("btn-agregar-conductor").addEventListener("click", async () => {
+        const data = {
+            nombre: document.getElementById("paramNombreConductor").value,
+            licencia: document.getElementById("paramLicenciaConductor").value,
+            sueldo: parseFloat(document.getElementById("paramSueldoConductor").value)
+        };
+
+        try {
+            const response = await fetch("api/agregar_conductor.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Error al conectar con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro cliente
+    document.getElementById("btn-agregar-cliente").addEventListener("click", async () => {
+        const data = {
+            nombre: document.getElementById("paramClienteNombre").value
+        };
+
+        try {
+            const response = await fetch("api/agregar_cliente.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Error al conectar con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro material
+    document.getElementById("btn-agregar-material").addEventListener("click", async () => {
+        const data = {
+            nombre: document.getElementById("paramMaterialNombre").value
+        };
+
+        try {
+            const response = await fetch("api/agregar_material.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Error al conectar con el servidor PHP");
+            console.error(err);
+        }
+    });
+
+    // Recoge los datos para el parámetro descripcion de gasto
+    document.getElementById("btn-agregar-descGasto").addEventListener("click", async () => {
+        const data = {
+            descripcion: document.getElementById("paramDescGastoNombre").value
+        };
+
+        try {
+            const response = await fetch("api/agregar_desc_gasto.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const resultado = await response.json();
+            alert(resultado.mensaje || resultado.error);
+        } catch (err) {
+            alert("Error al conectar con el servidor PHP");
             console.error(err);
         }
     });
@@ -350,7 +563,7 @@
     // Recibe los datos de los formularios para que se muestren en ellos
     window.addEventListener("DOMContentLoaded", async () => {
         try {
-            const res = await fetch("recibir_datos.php");
+            const res = await fetch("GET/recibir_datos.php");
             const data = await res.json();
 
             mostrarDatos("placa1", data.tractos, "placa");
@@ -788,11 +1001,11 @@
                 const diasViaje = calcularDias(fechaInicio, fechaFin);
                 if (diasViaje <= 0 || !conductorNombre || !kmInicio || !kmFin) { alert("Complete los campos principales correctamente."); return; }
                 if (kmFin < kmInicio) { alert("El 'KM Fin' no puede ser menor que el 'KM Inicio'."); return; }
-                if (facturasTemporales.length === 0) { alert("Debe agregar al menos una factura para un viaje válido."); return; }
+                //if (facturasTemporales.length === 0) { alert("Debe agregar al menos una factura para un viaje válido."); return; }
                 
                 const tractoSeleccionado = tractos.find(p => p.numero === placa1);
                 const conductorSeleccionado = conductores.find(c => c.nombre === conductorNombre);
-                if (!conductorSeleccionado || !tractoSeleccionado) { alert("El conductor o tracto seleccionado no es válido."); return; }
+                //if (!conductorSeleccionado || !tractoSeleccionado) { alert("El conductor o tracto seleccionado no es válido."); return; }
 
                 const costoManoDeObra = (conductorSeleccionado.sueldo / 30) * diasViaje;
                 const depreciacion = +((kmFin - kmInicio) * tractoSeleccionado.depreciacion).toFixed(2);
@@ -826,6 +1039,7 @@
             alert(`¡Viaje ${editId ? 'actualizado' : 'guardado'} exitosamente!`);
             mostrarVista('reportes');
         }
+
 
         function limpiarFormularioViaje() {
             serviciosTemporales = [], gastosTemporales = [], facturasTemporales = [];
